@@ -44,6 +44,11 @@ func (m *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 			return
 		}
 
+		if uc.UserAgent != c.GetHeader("User-Agent") {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		expireTime := uc.ExpiresAt
 		if expireTime.Sub(time.Now()).Seconds() < 50 {
 			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute * 30))

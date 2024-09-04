@@ -21,6 +21,10 @@ func main() {
 	db := initDb()
 	server := InitWebServer()
 	initUserHandler(db, server)
+	//server := gin.Default()
+	//server.GET("/hello", func(ctx *gin.Context) {
+	//	ctx.String(http.StatusOK, "hello, world")
+	//})
 	server.Run(":8080")
 }
 

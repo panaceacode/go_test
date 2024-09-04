@@ -4,6 +4,7 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"go_test/webook/internal/domain"
 	"go_test/webook/internal/service"
 	"net/http"
@@ -34,7 +35,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 func (h *UserHandler) RegisterRouters(server *gin.Engine) {
 	ug := server.Group("/user")
 	ug.POST("/signup", h.Signup)
-	ug.POST("/login", h.Login)
+	ug.POST("/login", h.LoginJWT)
 	ug.POST("/edit", h.Edit)
 	ug.GET("/profile", h.Profile)
 }
@@ -93,6 +94,40 @@ func (h *UserHandler) Signup(ctx *gin.Context) {
 	}
 }
 
+func (h *UserHandler) LoginJWT(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	var req LoginReq
+	if err := ctx.BindJSON(&req); err != nil {
+		return
+	}
+
+	u, err := h.svc.Login(ctx, req.Email, req.Password)
+	switch err {
+	case nil:
+		uc := &UserClaims{
+			Uid: u.Id,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
+		tokenString, err := token.SignedString(JWTKey)
+		if err != nil {
+			ctx.String(http.StatusOK, "系统错误")
+		}
+		ctx.Header("X-Jwt-Token", tokenString)
+		ctx.String(http.StatusOK, "登陆成功")
+	case service.ErrInvalidUserOrPassword:
+		ctx.String(http.StatusOK, "用户名或密码不正确")
+	default:
+		ctx.String(http.StatusOK, "系统错误")
+	}
+}
+
 func (h *UserHandler) Login(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
@@ -142,8 +177,11 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 		return
 	}
 
-	sess := sessions.Default(ctx)
-	userId := sess.Get("userId").(int64)
+	//sess := sessions.Default(ctx)
+	//userId := sess.Get("userId").(int64)
+
+	uc := ctx.MustGet("user").(UserClaims)
+	userId := uc.Uid
 	err = h.svc.UpdateNonSensitiveInfo(ctx, domain.User{
 		Id:       userId,
 		Nickname: req.Nickname,
@@ -154,4 +192,11 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 
 func (h *UserHandler) Profile(ctx *gin.Context) {
 
+}
+
+var JWTKey = []byte("lnij8x9s609gdaqiqweik4v656rry696")
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	Uid int64
 }

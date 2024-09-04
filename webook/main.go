@@ -2,9 +2,10 @@ package main
 
 import (
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"go_test/pkg/ginx/middleware/ratelimit"
+	"go_test/pkg/limiter"
 	"go_test/webook/internal/repository"
 	"go_test/webook/internal/repository/dao"
 	"go_test/webook/internal/service"
@@ -48,6 +49,12 @@ func InitWebServer() *gin.Engine {
 		MaxAge: 12 * time.Hour,
 	}))
 
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	server.Use(ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 1)).Build())
+
 	UseJWT(server)
 	// UserSession(server)
 	return server
@@ -59,19 +66,19 @@ func UseJWT(server *gin.Engine) {
 }
 
 func UseSession(server *gin.Engine) {
-	login := &middlewares.LoginMiddlewareBuilder{}
+	//login := &middlewares.LoginMiddlewareBuilder{}
 
 	// session基于cookie的实现
 	// cookie := cookie2.NewStore([]byte("secret"))
 
 	// 分布式下基于redis的实现
-	store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
-		[]byte("bem36sguyjucw77teum4064f3lgjw5a4"), // Authentication key
-		[]byte("lnij8x9s609gdaqiqweik4v656rry696")) // Encryption key
-	if err != nil {
-		panic(err)
-	}
-	server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
+	//store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
+	//	[]byte("bem36sguyjucw77teum4064f3lgjw5a4"), // Authentication key
+	//	[]byte("lnij8x9s609gdaqiqweik4v656rry696")) // Encryption key
+	//if err != nil {
+	//	panic(err)
+	//}
+	//server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
 }
 
 func initUserHandler(db *gorm.DB, server *gin.Engine) {

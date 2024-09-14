@@ -3,9 +3,6 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
-	"go_test/pkg/ginx/middleware/ratelimit"
-	"go_test/pkg/limiter"
 	"go_test/webook/internal/repository"
 	"go_test/webook/internal/repository/dao"
 	"go_test/webook/internal/service"
@@ -53,11 +50,11 @@ func InitWebServer() *gin.Engine {
 		MaxAge: 12 * time.Hour,
 	}))
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
-
-	server.Use(ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 1)).Build())
+	//redisClient := redis.NewClient(&redis.Options{
+	//	Addr: "localhost:6379",
+	//})
+	//
+	//server.Use(ratelimit.NewBuilder(limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 1)).Build())
 
 	UseJWT(server)
 	// UserSession(server)

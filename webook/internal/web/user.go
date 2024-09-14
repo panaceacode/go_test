@@ -5,8 +5,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go_test/pkg/ginx"
 	"go_test/webook/internal/domain"
 	"go_test/webook/internal/service"
+	ijwt "go_test/webook/internal/web/jwt"
 	"net/http"
 	"time"
 )
@@ -37,7 +39,7 @@ func (h *UserHandler) RegisterRouters(server *gin.Engine) {
 	ug.POST("/signup", h.Signup)
 	ug.POST("/login", h.LoginJWT)
 	ug.POST("/edit", h.Edit)
-	ug.GET("/profile", h.Profile)
+	ug.GET("/profile", ginx.WrapClaims(h.Profile))
 }
 
 func (h *UserHandler) Signup(ctx *gin.Context) {
@@ -108,7 +110,7 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 	u, err := h.svc.Login(ctx, req.Email, req.Password)
 	switch err {
 	case nil:
-		uc := &UserClaims{
+		uc := &ijwt.UserClaims{
 			Uid:       u.Id,
 			UserAgent: ctx.GetHeader("User-Agent"),
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -181,7 +183,7 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 	//sess := sessions.Default(ctx)
 	//userId := sess.Get("userId").(int64)
 
-	uc := ctx.MustGet("user").(UserClaims)
+	uc := ctx.MustGet("user").(ijwt.UserClaims)
 	userId := uc.Uid
 	err = h.svc.UpdateNonSensitiveInfo(ctx, domain.User{
 		Id:       userId,
@@ -191,14 +193,31 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 	})
 }
 
-func (h *UserHandler) Profile(ctx *gin.Context) {
-
+func (h *UserHandler) Profile(ctx *gin.Context,
+	uc ijwt.UserClaims) (ginx.Result, error) {
+	//us := ctx.MustGet("user").(UserClaims)
+	//ctx.String(http.StatusOK, "这是 profile")
+	u, err := h.svc.FindById(ctx, uc.Uid)
+	if err != nil {
+		return ginx.Result{
+			Code: 5,
+			Msg:  "系统错误",
+		}, err
+	}
+	type User struct {
+		Nickname string
+		Email    string
+		AboutMe  string
+		Birthday string
+	}
+	return ginx.Result{
+		Data: User{
+			Nickname: u.Nickname,
+			Email:    u.Email,
+			AboutMe:  u.AboutMe,
+			Birthday: u.Birthday.Format(time.DateOnly),
+		},
+	}, nil
 }
 
 var JWTKey = []byte("lnij8x9s609gdaqiqweik4v656rry696")
-
-type UserClaims struct {
-	jwt.RegisteredClaims
-	Uid       int64
-	UserAgent string
-}

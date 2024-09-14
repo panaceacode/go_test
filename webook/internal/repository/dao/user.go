@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
@@ -39,7 +38,7 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error)
 	return u, err
 }
 
-func (dao *UserDao) UpdateById(ctx *gin.Context, entity User) error {
+func (dao *UserDao) UpdateById(ctx context.Context, entity User) error {
 	return dao.db.WithContext(ctx).Model(&entity).Where("id = ?", entity.Id).
 		Updates(map[string]any{
 			"updated_at": time.Now().UnixMilli(),
@@ -49,6 +48,12 @@ func (dao *UserDao) UpdateById(ctx *gin.Context, entity User) error {
 		}).Error
 }
 
+func (dao *UserDao) FindById(ctx context.Context, uid int64) (User, error) {
+	var res User
+	err := dao.db.WithContext(ctx).Where("id = ?", uid).First(&res).Error
+	return res, err
+}
+
 func NewUserDao(db *gorm.DB) *UserDao {
 	return &UserDao{db: db}
 }
@@ -56,6 +61,7 @@ func NewUserDao(db *gorm.DB) *UserDao {
 type User struct {
 	Id        int64          `gorm:"primary_key,autoIncrement"`
 	Email     sql.NullString `gorm:"unique"`
+	Phone     sql.NullString `gorm:"unique"`
 	Password  string
 	Nickname  string `gorm:"type=varchar(128)"`
 	Birthday  int64

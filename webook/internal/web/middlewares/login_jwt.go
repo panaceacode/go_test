@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"go_test/webook/internal/web"
+	ijwt "go_test/webook/internal/web/jwt"
 	"log"
 	"net/http"
 	"strings"
@@ -35,7 +36,7 @@ func (m *LoginJWTMiddlewareBuilder) CheckLogin() gin.HandlerFunc {
 		}
 
 		tokenString := sgns[1]
-		var uc web.UserClaims
+		var uc ijwt.UserClaims
 		token, err := jwt.ParseWithClaims(tokenString, &uc, func(token *jwt.Token) (interface{}, error) {
 			return web.JWTKey, nil
 		})

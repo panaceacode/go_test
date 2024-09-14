@@ -10,4 +10,7 @@ type User struct {
 	Nickname string
 	Birthday time.Time
 	AboutMe  string
+	Phone    string
+
+	CreatedAt time.Time
 }
